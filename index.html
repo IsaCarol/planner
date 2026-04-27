@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>convite.exe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --lime:   #c8ff00;
+      --bg:     #0c0c0c;
+      --fg:     #f0f0f0;
+      --dim:    #555;
+      --border: #2a2a2a;
+      --card:   #111;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'DM Mono', monospace;
+      overflow: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 999; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+    }
+
+    .screen {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transform: translateY(16px);
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .screen.active  { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .screen.exit    { opacity: 0; transform: translateY(-12px); transition: opacity .2s, transform .2s; }
+
+    .card {
+      width: 100%; max-width: 460px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar {
+      background: var(--border);
+      padding: 9px 16px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.7rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .bar-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .bar-dot.r { background: #ff5f57; }
+    .bar-dot.y { background: #febc2e; }
+    .bar-dot.g { background: #28c840; }
+    .bar-title { flex: 1; text-align: center; }
+
+    .card-body { padding: 32px 32px 28px; }
+
+    .status {
+      font-size: 0.68rem;
+      color: var(--lime);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status::before {
+      content: '▶';
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3rem, 10vw, 5rem);
+      line-height: 0.95;
+      letter-spacing: 0.01em;
+      margin-bottom: 16px;
+      color: var(--fg);
+    }
+    h1 em {
+      color: var(--lime);
+      font-style: normal;
+      display: inline-block;
+      position: relative;
+    }
+    h1 em::before, h1 em::after {
+      content: attr(data-text);
+      position: absolute; left: 0; top: 0;
+    }
+    h1 em::before {
+      animation: glitch-a 3s infinite;
+      clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+      color: #ff4d6d;
+    }
+    h1 em::after {
+      animation: glitch-b 3s infinite;
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+      color: #00d4ff;
+    }
+    @keyframes glitch-a {
+      0%,90%,100% { transform: translate(0); opacity: 0; }
+      91% { transform: translate(-3px, 1px); opacity: 0.8; }
+      93% { transform: translate(2px, -1px); opacity: 0.8; }
+      95% { opacity: 0; }
+    }
+    @keyframes glitch-b {
+      0%,92%,100% { transform: translate(0); opacity: 0; }
+      93% { transform: translate(3px, -1px); opacity: 0.8; }
+      96% { transform: translate(-2px); opacity: 0.8; }
+      98% { opacity: 0; }
+    }
+
+    .sub {
+      font-size: 0.82rem;
+      color: var(--dim);
+      line-height: 1.6;
+      margin-bottom: 28px;
+      font-weight: 300;
+    }
+
+    .nodes { display: flex; flex-direction: column; gap: 2px; margin-bottom: 24px; }
+
+    .node {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .node::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--lime);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform .2s;
+    }
+    .node:hover {
+      background: rgba(200,255,0,0.05);
+      border-color: rgba(200,255,0,0.2);
+      transform: translateX(4px);
+    }
+    .node:hover::before { transform: scaleY(1); }
+
+    .node-icon { font-size: 1.2rem; min-width: 28px; text-align: center; }
+    .node-text { flex: 1; }
+    .node-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg);
+    }
+    .node-desc {
+      font-size: 0.7rem;
+      color: var(--dim);
+      margin-top: 2px;
+      font-weight: 300;
+    }
+    .node-key {
+      font-size: 0.65rem;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .node:hover .node-key { color: var(--lime); border-color: rgba(200,255,0,0.3); }
+
+    .hr { border: none; border-top: 1px solid var(--border); margin: 0 0 22px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px;
+      border: 1px solid;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background .15s, color .15s, transform .1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-main {
+      background: var(--lime);
+      border-color: var(--lime);
+      color: #0c0c0c;
+      font-weight: 500;
+    }
+    .btn-main:hover { background: #d8ff22; }
+    .btn-back {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--dim);
+    }
+    .btn-back:hover { border-color: #555; color: var(--fg); }
+
+    .big-emoji { font-size: 3rem; display: block; margin-bottom: 16px; line-height: 1; }
+    .detail-text {
+      font-size: 0.83rem;
+      color: #aaa;
+      line-height: 1.75;
+      margin-bottom: 28px;
+      font-weight: 300;
+    }
+
+    .screen.active .node { animation: slideIn .3s ease forwards; }
+    .node:nth-child(1) { animation-delay: .04s; }
+    .node:nth-child(2) { animation-delay: .10s; }
+    .node:nth-child(3) { animation-delay: .16s; }
+    .node:nth-child(4) { animation-delay: .22s; }
+    .node { opacity: 0; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="screen active" id="home">
+  <div class="card">
+    <div class="bar">
+      <div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div>
+      <span class="bar-title">convite.exe — running</span>
+    </div>
+    <div class="card-body">
+      <div class="status">novo arquivo recebido</div>
+      <h1>oi,<br><em data-text="aparece">Você foi oficialmente convidada para um evento exclusivo</em></h1>
+      <p class="sub">montei um plano pra, espero que goste.<br>só escolhe o dia e vê o que tem.</p>
+      <button class="btn btn-main" onclick="go('mapa')">► abrir plano</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="mapa">
+  <div class="card">
+    <div class="bar">
+      <div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div>
+      <span class="bar-title">selecionar_dia.exe</span>
+    </div>
+    <div class="card-body">
+      <div class="status">escolha uma opção</div>
+      <h1>qual<br>dia?</h1>
+      <p class="sub">// qual quer ver primeiro?</p>
+      <div class="nodes">
+        <div class="node" onclick="go('sabado')">
+          <span class="node-icon">🌙</span>
+          <span class="node-text">
+            <span class="node-label">Sábado</span>
+            <span class="node-desc">noite, comida, vibes</span>
+          </span>
+          <span class="node-key">01</span>
+        </div>
+        <div class="node" onclick="go('domingo')">
+          <span class="node-icon">☀️</span>
+          <span class="node-text">
+            <span class="node-label">Domingo</span>
+            <span class="node-desc">passeio, mc, livros</span>
+          </span>
+          <span class="node-key">02</span>
+        </div>
+      </div>
+      <hr class="hr"/>
+      <button class="btn btn-back" onclick="go('home')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="sabado">
+  <div class="card">
+    <div class="bar">
+      <div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div>
+      <span class="bar-title">sabado_night.exe</span>
+    </div>
+    <div class="card-body">
+      <div class="status">sábado selecionado</div>
+      <h1>o<br><em data-text="plano">plano</em></h1>
+      <p class="sub">// clica em cada parte pra ver o detalhe.</p>
+      <div class="nodes">
+        <div class="node" onclick="go('entrada')">
+          <span class="node-icon">🧀</span>
+          <span class="node-text"><span class="node-label">Entrada</span><span class="node-desc"> warm up antes da pizza</span></span>
+          <span class="node-key">01</span>
+        </div>
+        <div class="node" onclick="go('principal')">
+          <span class="node-icon">🍕</span>
+          <span class="node-text"><span class="node-label">Pizza</span><span class="node-desc"> óbvio mas clássico</span></span>
+          <span class="node-key">02</span>
+        </div>
+        <div class="node" onclick="go('bebida')">
+          <span class="node-icon">🍺</span>
+          <span class="node-text"><span class="node-label">Bebida</span><span class="node-desc"> decide na hora</span></span>
+          <span class="node-key">03</span>
+        </div>
+        <div class="node" onclick="go('noite')">
+          <span class="node-icon">🎮</span>
+          <span class="node-text"><span class="node-label">Depois</span><span class="node-desc"> vibe livre</span></span>
+          <span class="node-key">04</span>
+        </div>
+      </div>
+      <hr class="hr"/>
+      <button class="btn btn-back" onclick="go('mapa')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="domingo">
+  <div class="card">
+    <div class="bar">
+      <div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div>
+      <span class="bar-title">domingo_relax.exe</span>
+    </div>
+    <div class="card-body">
+      <div class="status">domingo selecionado</div>
+      <h1>dia<br><em data-text="livre">livre</em></h1>
+      <p class="sub">// algo leve pra relaxar</p>
+      <div class="nodes">
+        <div class="node" onclick="go('manha')">
+          <span class="node-icon">🌿</span>
+          <span class="node-text"><span class="node-label">Manhã</span><span class="node-desc"> parque do ingá, ar livre</span></span>
+          <span class="node-key">01</span>
+        </div>
+        <div class="node" onclick="go('almoco')">
+          <span class="node-icon">🍔</span>
+          <span class="node-text"><span class="node-label">Almoço</span><span class="node-desc"> mc. sem julgamento</span></span>
+          <span class="node-key">02</span>
+        </div>
+        <div class="node" onclick="go('tarde')">
+          <span class="node-icon">🎬</span>
+          <span class="node-text"><span class="node-label">Tarde</span><span class="node-desc"> cinema ou livraria, a gente vê</span></span>
+          <span class="node-key">03</span>
+        </div>
+      </div>
+      <hr class="hr"/>
+      <button class="btn btn-back" onclick="go('mapa')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="entrada">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">entrada.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🧀</span>
+      <div class="status">entrada</div>
+      <h1>frios<br>& papo</h1>
+      <p class="detail-text">// queijo, alguma coisa pra beliscar, conversa boa.<br></p>
+      <button class="btn btn-back" onclick="go('sabado')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="principal">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">pizza.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🍕</span>
+      <div class="status">prato principal</div>
+      <h1>pizza,<br>claro</h1>
+      <p class="detail-text">// porque não tem erro <br>// cheddar com certeza.</p>
+      <button class="btn btn-back" onclick="go('sabado')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="bebida">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">bebida.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🍺</span>
+      <div class="status">bebida</div>
+      <h1>vinho<br>ou Cerveja?</h1>
+      <p class="detail-text">// na dúvida a gente toma os dois.<br>// a gente não precisa ter a resposta antes.</p>
+      <button class="btn btn-back" onclick="go('sabado')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="noite">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">pos_jantar.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🎮</span>
+      <div class="status">depois do jantar</div>
+      <h1>filme,<br>jogo, sei lá</h1>
+      <p class="detail-text">// a gente escolhe na hora. sem planejamento excessivo.<br>// às vezes é melhor não ter plano.</p>
+      <button class="btn btn-back" onclick="go('sabado')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="manha">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">manha.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🌿</span>
+      <div class="status">manhã</div>
+      <h1>parque<br>do ingá</h1>
+      <p class="detail-text">// andar, ver os bichos esquisitos, respirar ar bom.<br>// zero exigência de humor matinal.</p>
+      <button class="btn btn-back" onclick="go('domingo')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="almoco">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">almoco.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">🍔</span>
+      <div class="status">almoço</div>
+      <h1>mc<br>sem culpa</h1>
+      <p class="detail-text">// big mac, batata frita, milkshake discutível.<br>// será que vou trocar o BK?.</p>
+      <button class="btn btn-back" onclick="go('domingo')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="tarde">
+  <div class="card">
+    <div class="bar"><div class="bar-dot r"></div><div class="bar-dot y"></div><div class="bar-dot g"></div><span class="bar-title">tarde.txt</span></div>
+    <div class="card-body">
+      <span class="big-emoji">📚</span>
+      <div class="status">tarde</div>
+      <h1>cinema<br>ou livraria</h1>
+      <p class="detail-text">// se tiver filme bom, vai. se não, livraria.<br>// qualquer coisa a gente faz os dois.</p>
+      <button class="btn btn-back" onclick="go('domingo')">← voltar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function go(id) {
+    const cur  = document.querySelector('.screen.active');
+    const next = document.getElementById(id);
+    if (!next || cur === next) return;
+    cur.classList.add('exit');
+    cur.classList.remove('active');
+    setTimeout(() => {
+      cur.classList.remove('exit');
+      next.classList.add('active');
+      next.querySelectorAll('.node').forEach(n => {
+        n.style.animation = 'none';
+        n.offsetHeight;
+        n.style.animation = '';
+      });
+    }, 220);
+  }
+</script>
+</body>
+</html>
